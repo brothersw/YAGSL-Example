@@ -3,6 +3,8 @@ package swervelib.imu;
 import swervelib.imu.BNO055;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.util.sendable.Sendable;
+import edu.wpi.first.util.sendable.SendableBuilder;
 import edu.wpi.first.wpilibj.I2C;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -12,7 +14,6 @@ public class BNO055Swerve extends SwerveIMU
 {
 
   private BNO055     imu;
-  private I2C.Port   port;
   /**
    * Offset for the bno055.
    */
@@ -29,7 +30,6 @@ public class BNO055Swerve extends SwerveIMU
    */
   public BNO055Swerve(I2C.Port port)
   {
-    this.port = port;
     imu = BNO055.getInstance(
       BNO055.opmode_t.OPERATION_MODE_IMUPLUS, 
       BNO055.vector_type_t.VECTOR_EULER, 
@@ -37,8 +37,23 @@ public class BNO055Swerve extends SwerveIMU
       BNO055.BNO055_ADDRESS_A
     ); 
     
-    // TODO: fix this bit
-    SmartDashboard.putData(imu);
+    SmartDashboard.putData(new BNO055Sendable(imu));
+  }
+
+  /**
+   * Use the Sendable code that most frc imu's have for Smart Dashboard
+   */
+  private class BNO055Sendable implements Sendable {
+    private BNO055 imu;
+    public BNO055Sendable(BNO055 imu) {
+      this.imu = imu;
+    }
+
+    @Override
+    public void initSendable(SendableBuilder builder) {
+      builder.setSmartDashboardType("Gyro");
+      builder.addDoubleProperty("Value", () -> imu.getVector()[0], null);
+    }
   }
 
   /**
@@ -87,12 +102,6 @@ public class BNO055Swerve extends SwerveIMU
   @Override
   public Rotation3d getRawRotation3d()
   {
-    imu = BNO055.getInstance(
-      BNO055.opmode_t.OPERATION_MODE_IMUPLUS, 
-      BNO055.vector_type_t.VECTOR_EULER, 
-      port,
-      BNO055.BNO055_ADDRESS_A
-    );
     double[] xyz = imu.getVector();
     Rotation3d reading = new Rotation3d(xyz[1], xyz[2], xyz[0]);
     return invertedIMU ? reading.unaryMinus() : reading;
@@ -118,14 +127,8 @@ public class BNO055Swerve extends SwerveIMU
   @Override
   public Optional<Translation3d> getAccel()
   {
-    imu = BNO055.getInstance(
-      BNO055.opmode_t.OPERATION_MODE_IMUPLUS, 
-      BNO055.vector_type_t.VECTOR_EULER, 
-      port,
-      BNO055.BNO055_ADDRESS_A
-    );
-    double[] xyz = imu.getVector();
-    return Optional.of(new Translation3d(xyz[0], xyz[1], xyz[2]));
+    // technically possible with the sensor, but would require a rewrite of BNO055.java due to race conditions when changing vector types retrieved
+    return Optional.empty();
   }
 
   /**
